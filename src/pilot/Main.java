@@ -15,42 +15,35 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.geom.AffineTransform;
-import java.util.Arrays;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-import org.joml.Matrix2d;
-import org.joml.Matrix3d;
 import org.joml.Matrix4d;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
-import org.joml.Vector4d;
 
 import artisynth.core.materials.LinearAxialMaterial;
 import artisynth.core.mechmodels.AxialSpring;
 import artisynth.core.mechmodels.MechModel;
 import artisynth.core.mechmodels.MechSystemSolver;
+import artisynth.core.mechmodels.MechSystemSolver.Integrator;
 import artisynth.core.mechmodels.Particle;
 import artisynth.core.mechmodels.ParticlePlaneConstraint;
-import artisynth.core.mechmodels.PointList;
-import artisynth.core.mechmodels.MechSystemSolver.Integrator;
 import artisynth.core.modelbase.StepAdjustment;
 import maspack.matrix.Point3d;
-import maspack.util.Logger;
-import maspack.util.Logger.LogLevel;
 
 public class Main extends JPanel implements MouseWheelListener, MouseListener, MouseMotionListener, ComponentListener {
 
+	private static final long serialVersionUID = -730734892177645353L;
 	private Point dragFrom = null;
 	private static Vector3d drag = new Vector3d();
 	private static Matrix4d viewMatrix = new Matrix4d();
 	private static double cameraZoom = 1d;
 	private static Vector2d cameraPosition = new Vector2d();
-	private static double width = 1200;
-	private static double height = 800;
+	private static double viewportWidth = 1200;
+	private static double viewportHeight = 800;
 	
 	private static final MechModel mech = new MechModel("mech");
 	private static final MechSystemSolver solver = new MechSystemSolver(mech);
@@ -64,7 +57,7 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 	
 	private static void initScene() {
 		
-		solver.setIntegrator(Integrator.RungeKutta4);
+		solver.setIntegrator(Integrator.ConstrainedBackwardEuler);
 		
 		mech.setGravity (0, 0, -9.8);
 		Particle p1 = new Particle("p1", 2, 0, 0, 0);
@@ -105,12 +98,13 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 	public static void main(String[] args) {
 
 		JFrame frame = new JFrame("Physics");
-		frame.setSize((int)width, (int)height);
+		frame.setSize((int)viewportWidth, (int)viewportHeight);
 		frame.setLocationRelativeTo(null);
 		frame.setLayout(new BorderLayout());
 		frame.add(new Main(), BorderLayout.CENTER);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.addWindowListener(new WindowAdapter() {
+			@Override
 			public void windowOpened(WindowEvent e) {
 				updateViewMatrix();
             }
@@ -126,30 +120,34 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 			double renderAcc = 0;
 			double renderFPS = 20;
 			double updateAcc = 0;
-			double updateFPS = 100;
+			double updateFPS = 40;
 			
-			for (;;) {
-				
-				long currentTime = System.nanoTime();
-				double dt = (double)(System.nanoTime()-prevTime)/1000000000d;
-				prevTime = currentTime;
+			try {
 
-				updateAcc += dt;
-				if (updateAcc >= 1d/updateFPS) {
-					updateAcc = 0;
-					solver.solve(0, 1d/updateFPS, new StepAdjustment(1d/updateFPS));
-				}
-				
-				renderAcc += dt;
-				if (renderAcc >= 1d/renderFPS) {
-					renderAcc = 0;
-					frame.repaint();
-				}
-				
-				try {
+				for (;;) {
+
+					long currentTime = System.nanoTime();
+					double dt = (double) (System.nanoTime() - prevTime) / 1000000000d;
+					prevTime = currentTime;
+
+					updateAcc += dt;
+					if (updateAcc >= 1d / updateFPS) {
+						updateAcc = 0;
+						solver.solve(0, 1d / updateFPS, new StepAdjustment(1d / updateFPS));
+					}
+
+					renderAcc += dt;
+					if (renderAcc >= 1d / renderFPS) {
+						renderAcc = 0;
+						frame.repaint();
+					}
+
 					Thread.sleep(1);
-				} catch (InterruptedException ex) {
+
 				}
+
+			} catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
 			}
 			
 			
@@ -157,7 +155,7 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 	}
 	
 	private static void updateViewMatrix() {
-		viewMatrix.identity().scale(1, -1, 1).translate(width / 2, -height / 2, 0).scale(Math.min(width, height)/4);
+		viewMatrix.identity().scale(1, -1, 1).translate(viewportWidth / 2, -viewportHeight / 2, 0).scale(Math.min(viewportWidth, viewportHeight)/4);
 		viewMatrix.scale(cameraZoom);
 		viewMatrix.translate(cameraPosition.x+drag.x,cameraPosition.y+drag.y,0);
 	}
@@ -169,20 +167,20 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 		Graphics2D g2 = (Graphics2D) g.create();
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-		Vector3d O = viewMatrix.transformPosition(new Vector3d(0, 0, 0));
-		Vector3d X = viewMatrix.transformPosition(new Vector3d(1, 0, 0));
-		Vector3d Y = viewMatrix.transformPosition(new Vector3d(0, 1, 0));
+		Vector3d origo = viewMatrix.transformPosition(new Vector3d(0, 0, 0));
+		Vector3d unitX = viewMatrix.transformPosition(new Vector3d(1, 0, 0));
+		Vector3d unitY = viewMatrix.transformPosition(new Vector3d(0, 1, 0));
 		g2.setColor(Color.red);
-		g2.drawLine((int)O.x, (int)O.y, (int)X.x, (int)X.y);
+		g2.drawLine((int)origo.x, (int)origo.y, (int)unitX.x, (int)unitX.y);
 		g2.setColor(Color.green);
-		g2.drawLine((int)O.x, (int)O.y, (int)Y.x, (int)Y.y);
+		g2.drawLine((int)origo.x, (int)origo.y, (int)unitY.x, (int)unitY.y);
 
 		// Jelenet kirajzolása.
 		g2.setColor(Color.black);
 		int s = 4;
 		for (Particle p : mech.particles()) {
 			Vector3d pt = viewMatrix.transformPosition(new Vector3d(p.getPosition().x, p.getPosition().z, 0));
-			g2.drawOval((int)(pt.x-s/2), (int)(pt.y-s/2), s, s);
+			g2.drawOval((int)(pt.x-s/2d), (int)(pt.y-s/2d), s, s);
 		}
 		
 		for (AxialSpring sp : mech.axialSprings()) {
@@ -201,14 +199,14 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 		
 		Point p = e.getPoint();
 		
-		Vector3d v0 = new Vector3d(p.x-width/2, p.y-height/2, 0);
+		Vector3d v0 = new Vector3d(p.x-viewportWidth/2, p.y-viewportHeight/2, 0);
 		Matrix4d m = viewMatrix.invert(new Matrix4d());
 		Vector3d t0 = m.transformDirection(v0);
 		
 		updateViewMatrix();
 		
 		m = viewMatrix.invert(new Matrix4d());
-		Vector3d v1 = new Vector3d(p.x-width/2, p.y-height/2, 0);
+		Vector3d v1 = new Vector3d(p.x-viewportWidth/2, p.y-viewportHeight/2, 0);
 		Vector3d t1 = m.transformDirection(v1);
 		
 		t1.sub(t0);
@@ -249,36 +247,43 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 	
 	@Override
 	public void componentResized(ComponentEvent e) {
-		width = getWidth();
-		height = getHeight();
+		viewportWidth = getWidth();
+		viewportHeight = getHeight();
 		updateViewMatrix();
 	}
 	
 	@Override
 	public void mouseClicked(MouseEvent e) {
+		// Not implemented.
 	}
 
 	@Override
 	public void mouseEntered(MouseEvent e) {
+		// Not implemented.
 	}
 
 	@Override
 	public void mouseExited(MouseEvent e) {
+		// Not implemented.
 	}
 	
 	@Override
 	public void mouseMoved(MouseEvent e) {
+		// Not implemented.
 	}
 
 	@Override
 	public void componentHidden(ComponentEvent e) {
+		// Not implemented.
 	}
 
 	@Override
 	public void componentMoved(ComponentEvent e) {
+		// Not implemented.
 	}
 
 	@Override
 	public void componentShown(ComponentEvent e) {
+		// Not implemented.
 	}
 }
