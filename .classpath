@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/argparser.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/gdcm.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/gluegen-rt-2.3.2.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/gluegen-rt-2.3.2-natives-linux-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/gluegen-rt-2.3.2-natives-macosx-universal.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/gluegen-rt-2.3.2-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jass.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/javaosc.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jipopt.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jmf.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jogl-all-2.3.2.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jogl-all-2.3.2-natives-linux-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jogl-all-2.3.2-natives-macosx-universal.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jogl-all-2.3.2-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/joml-1.9.17.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jsoup-1.11.2.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jython.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/looks.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/matconsolectl-4.4.4.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/quickhull3d.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/vclipx.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/vfs2.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
