@@ -8,6 +8,8 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -34,7 +36,7 @@ import artisynth.core.mechmodels.ParticlePlaneConstraint;
 import artisynth.core.modelbase.StepAdjustment;
 import maspack.matrix.Point3d;
 
-public class Main extends JPanel implements MouseWheelListener, MouseListener, MouseMotionListener, ComponentListener {
+public class Main extends JPanel implements MouseWheelListener, MouseListener, MouseMotionListener, ComponentListener, KeyListener {
 
 	private static final long serialVersionUID = -730734892177645353L;
 	private Point dragFrom = null;
@@ -45,8 +47,8 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 	private static double viewportWidth = 1200;
 	private static double viewportHeight = 800;
 	
-	private static final MechModel mech = new MechModel("mech");
-	private static final MechSystemSolver solver = new MechSystemSolver(mech);
+	private static final MechModel scene = new MechModel("scene");
+	private static final MechSystemSolver solver = new MechSystemSolver(scene);
 	
 	public Main() {
 		addMouseWheelListener(this);
@@ -57,42 +59,45 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 	
 	private static void initScene() {
 		
+		scene.clearAxialSprings();
+		scene.clearParticles();
+		
 		solver.setIntegrator(Integrator.ConstrainedBackwardEuler);
 		
-		mech.setGravity (0, 0, -9.8);
+		scene.setGravity (0, 0, -9.8);
 		Particle p1 = new Particle("p1", 2, 0, 0, 0);
 		Particle p2 = new Particle("p2",.1, -.5, 0, 0);
 		AxialSpring spring = new AxialSpring("spr", 0);
 		spring.setPoints(p1, p2);
 		spring.setMaterial(new LinearAxialMaterial(30, 10));
-		mech.addParticle(p1);
-		mech.addParticle(p2);
-		mech.addAxialSpring(spring);
+		scene.addParticle(p1);
+		scene.addParticle(p2);
+		scene.addAxialSpring(spring);
 		p1.setDynamic(false);
 		
 		Particle p3 = new Particle("p3", 2, -1, 0, 0);
 		AxialSpring spring2 = new AxialSpring("spr2", 0);
 		spring2.setPoints(p2, p3);
 		spring2.setMaterial(new LinearAxialMaterial(30, 10));
-		mech.addParticle(p3);
-		mech.addAxialSpring(spring2);
+		scene.addParticle(p3);
+		scene.addAxialSpring(spring2);
 		p3.setDynamic(false);
 		
 		Particle p4 = new Particle("p4", 2, -1, 0, -.5);
 		AxialSpring spring3 = new AxialSpring("spr3", 0);
 		spring3.setPoints(p2, p4);
 		spring3.setMaterial(new LinearAxialMaterial(30, 10));
-		mech.addParticle(p4);
-		mech.addAxialSpring(spring3);
+		scene.addParticle(p4);
+		scene.addAxialSpring(spring3);
 		
-		mech.setBounds(-1, 0, -1, 1, 0, 0);
+		scene.setBounds(-1, 0, -1, 1, 0, 0);
 		
 		ParticlePlaneConstraint planecont = new ParticlePlaneConstraint(new maspack.matrix.Vector3d(0, 1, 0), new Point3d());
 		planecont.addParticle(p1);
 		planecont.addParticle(p2);
 		planecont.addParticle(p3);
 		planecont.addParticle(p4);
-		mech.addConstrainer(planecont);
+		scene.addConstrainer(planecont);
 	}
 	
 	public static void main(String[] args) {
@@ -101,7 +106,8 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 		frame.setSize((int)viewportWidth, (int)viewportHeight);
 		frame.setLocationRelativeTo(null);
 		frame.setLayout(new BorderLayout());
-		frame.add(new Main(), BorderLayout.CENTER);
+		Main main = new Main();
+		frame.add(main, BorderLayout.CENTER);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.addWindowListener(new WindowAdapter() {
 			@Override
@@ -109,6 +115,7 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 				updateViewMatrix();
             }
 		});
+		frame.addKeyListener(main);
 		frame.setVisible(true);
 		
 		initScene();
@@ -178,12 +185,12 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 		// Jelenet kirajzolása.
 		g2.setColor(Color.black);
 		int s = 4;
-		for (Particle p : mech.particles()) {
+		for (Particle p : scene.particles()) {
 			Vector3d pt = viewMatrix.transformPosition(new Vector3d(p.getPosition().x, p.getPosition().z, 0));
 			g2.drawOval((int)(pt.x-s/2d), (int)(pt.y-s/2d), s, s);
 		}
 		
-		for (AxialSpring sp : mech.axialSprings()) {
+		for (AxialSpring sp : scene.axialSprings()) {
 			artisynth.core.mechmodels.Point fpt = sp.getFirstPoint();
 			artisynth.core.mechmodels.Point spt = sp.getSecondPoint();
 			Vector3d pt1 = viewMatrix.transformPosition(new Vector3d(fpt.getPosition().x, fpt.getPosition().z, 0));
@@ -284,6 +291,31 @@ public class Main extends JPanel implements MouseWheelListener, MouseListener, M
 
 	@Override
 	public void componentShown(ComponentEvent e) {
+		// Not implemented.
+	}
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+		// Not implemented.
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+
+		switch (e.getKeyCode()) {
+		case KeyEvent.VK_ESCAPE:
+			System.exit(0);
+			break;
+		case KeyEvent.VK_R:
+			initScene();
+			break;
+		default:
+			break;
+		}
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
 		// Not implemented.
 	}
 }
