@@ -24,5 +24,7 @@
 	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/quickhull3d.jar"/>
 	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/vclipx.jar"/>
 	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/vfs2.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/jbullet-3.0.0.20130526.jar"/>
+	<classpathentry kind="lib" path="C:/Users/imruf84/eclipse-workspace/ArtiSynth2DPilot/libs/vecmath-1.5.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
