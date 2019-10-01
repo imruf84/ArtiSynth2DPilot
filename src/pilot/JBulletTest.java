@@ -17,6 +17,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.JFrame;
@@ -42,6 +43,7 @@ import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
 import com.bulletphysics.dynamics.DynamicsWorld;
 import com.bulletphysics.dynamics.RigidBody;
 import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
+import com.bulletphysics.dynamics.constraintsolver.Generic6DofConstraint;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
 import com.bulletphysics.linearmath.DefaultMotionState;
 import com.bulletphysics.linearmath.QuaternionUtil;
@@ -62,10 +64,11 @@ public class JBulletTest extends JPanel implements MouseWheelListener, MouseList
 	private static double viewportHeight = 800;
 	
 	private static double renderFPS = 30;
-	private static float physicsFPS = 50;
+	private static float physicsFPS = 60;
 	
 	private static Object sceneLock = new Object();
 	private static DynamicsWorld scene = null;
+	private static RigidBody zeroBody = null;
 
 	
 	public JBulletTest() {
@@ -86,23 +89,26 @@ public class JBulletTest extends JPanel implements MouseWheelListener, MouseList
 	private static void clearScene() {
 	}
 	
-	private static RigidBody addBox(double w, double h, double m, double x, double y, double a, double vx, double vy, double va) {
-		
+	private static RigidBody addPoly(int n, double r, double m, double x, double y, double a, double vx, double vy, double va) {
 		synchronized (sceneLock) {
 			
-			float wx = (float) (w/2d);
-			float wz = (float) (h/2d);
-			float wy = (wx+wz)/2;
+			float wy = 1f;
 			
 			ObjectArrayList<Vector3f> points = new ObjectArrayList<>();
-			points.add(new Vector3f(-wx, -wy, wz));
-			points.add(new Vector3f(-wx, wy, wz));
-			points.add(new Vector3f(wx, wy, wz));
-			points.add(new Vector3f(wx, -wy, wz));
-			points.add(new Vector3f(-wx, -wy, -wz));
-			points.add(new Vector3f(-wx, wy, -wz));
-			points.add(new Vector3f(wx, wy, -wz));
-			points.add(new Vector3f(wx, -wy, -wz));
+			
+			float[] ang = new float[n];
+			for (int i = 0; i < n; i++) {
+				ang[i] = (float)ThreadLocalRandom.current().nextDouble(0, Math.PI*2);
+			}
+			Arrays.sort(ang);
+			for (int i = 0; i < n; i++)
+			{
+				points.add(new Vector3f((float)(r*Math.cos(ang[i])), wy, (float)(r*Math.sin(ang[i]))));
+			}
+			for (int i = 0; i < n; i++) {
+				points.add(new Vector3f(points.get(i).x, -wy, points.get(i).z));
+			}
+			
 			for (Vector3f p : points) {
 				float id = -p.y;
 				p.y = p.z;
@@ -125,9 +131,96 @@ public class JBulletTest extends JPanel implements MouseWheelListener, MouseList
 			body.applyTorqueImpulse(new Vector3f(0, 0, (float)va));
 			
 			scene.addRigidBody(body);
+			Transform tr1 = new Transform();
+			tr1.setIdentity();
+			Transform tr2 = new Transform();
+			tr2.setIdentity();
+			Generic6DofConstraint contr2D = new Generic6DofConstraint(body, zeroBody, tr1, tr2, false);
+			contr2D.setLimit(0, 1, 0);
+			contr2D.setLimit(1, 1, 0);
+			contr2D.setLimit(2, 0, 0);
+			contr2D.setLimit(3, 0, 0);
+			contr2D.setLimit(4, 0, 0);
+			contr2D.setLimit(5, 1, 0);
+			
+			scene.addConstraint(contr2D);
 			
 			return body;
 		}
+	}
+	
+	private static RigidBody addBox(double w, double h, double m, double x, double y, double a, double vx, double vy, double va) {
+		
+		synchronized (sceneLock) {
+			
+			float wx = (float) (w/2d);
+			float wz = (float) (h/2d);
+			float wy = 1f;
+			
+			ObjectArrayList<Vector3f> points = new ObjectArrayList<>();
+			
+			points.add(new Vector3f(wx, wy, wz));
+			points.add(new Vector3f(-wx, wy, wz));
+			points.add(new Vector3f(-wx, wy, -wz));
+			points.add(new Vector3f(wx, wy, -wz));
+			
+			points.add(new Vector3f(wx, -wy, wz));
+			points.add(new Vector3f(-wx, -wy, wz));
+			points.add(new Vector3f(-wx, -wy, -wz));
+			points.add(new Vector3f(wx, -wy, -wz));
+			
+			for (Vector3f p : points) {
+				float id = -p.y;
+				p.y = p.z;
+				p.z = id;
+			}
+			
+			CollisionShape shape = new ConvexHullShape(points);
+			Quat4f rot = new Quat4f(); 
+			QuaternionUtil.setRotation(rot, new Vector3f(0, 0, 1), (float) a);
+			
+			DefaultMotionState motionState = new DefaultMotionState(new Transform(new Matrix4f(rot, new Vector3f((float)x, (float)y, 0), 1.0f)));
+
+			Vector3f inertia = new Vector3f(0, 0, 0);
+			shape.calculateLocalInertia((float) m, inertia);
+
+			RigidBodyConstructionInfo rigidBodyCI = new RigidBodyConstructionInfo((float) m, motionState, shape, inertia);
+			RigidBody body = new RigidBody(rigidBodyCI);
+			body.setUserPointer(null);
+			body.applyCentralImpulse(new Vector3f((float)vx, (float)vy, 0));
+			body.applyTorqueImpulse(new Vector3f(0, 0, (float)va));
+			
+			scene.addRigidBody(body);
+			Transform tr1 = new Transform();
+			tr1.setIdentity();
+			Transform tr2 = new Transform();
+			tr2.setIdentity();
+			Generic6DofConstraint contr2D = new Generic6DofConstraint(body, zeroBody, tr1, tr2, false);
+			contr2D.setLimit(0, 1, 0);
+			contr2D.setLimit(1, 1, 0);
+			contr2D.setLimit(2, 0, 0);
+			contr2D.setLimit(3, 0, 0);
+			contr2D.setLimit(4, 0, 0);
+			contr2D.setLimit(5, 1, 0);
+			
+			scene.addConstraint(contr2D);
+			
+			return body;
+		}
+	}
+	
+	private static RigidBody addRandomPoly() {
+		int n = ThreadLocalRandom.current().nextInt(3, 8);
+		double r = ThreadLocalRandom.current().nextDouble(.1, 4);
+		double m = ThreadLocalRandom.current().nextDouble(.01, 10);
+		double x = ThreadLocalRandom.current().nextDouble(-1, 1);
+		double y = ThreadLocalRandom.current().nextDouble(10, 40);
+		double a = ThreadLocalRandom.current().nextDouble(-Math.PI, Math.PI);
+		double vx = ThreadLocalRandom.current().nextDouble(-50, 50);
+		double vy = ThreadLocalRandom.current().nextDouble(-100, 0);
+		double va = ThreadLocalRandom.current().nextDouble(-40, 40);
+		
+		return addPoly(n, r, m, x, y, a, vx, vy, va);
 	}
 	
 	private static RigidBody addRandomBox() {
@@ -152,10 +245,13 @@ public class JBulletTest extends JPanel implements MouseWheelListener, MouseList
 		SequentialImpulseConstraintSolver solver = new SequentialImpulseConstraintSolver();
 		scene = new DiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
 		scene.setGravity(new Vector3f(0, -10, 0));
+		zeroBody  = new RigidBody(0, null, null);
+		scene.addRigidBody(zeroBody);
 		
-		addBox(100, 1, 0, 0, -1f/2f, 0, 0, 0, 0);
-		
-		addBox(2, 2, 1, 0, 20f, Math.PI/3, 0, 0, 0);
+		addBox(100, 10, 0, 0, -10f/2f, 0, 0, 0, 0);
+		addBox(100, 10, 0, 0, 100f, 0, 0, 0, 0);
+		addBox(10, 100, 0, -100f/2f, 100f/2f, 0, 0, 0, 0);
+		addBox(10, 100, 0, 100f/2f, 100f/2f, 0, 0, 0, 0);
 	}
 	
 	public static void main(String[] args) {
@@ -244,19 +340,27 @@ public class JBulletTest extends JPanel implements MouseWheelListener, MouseList
 		body.getMotionState().getWorldTransform(trans);
 
 		PolyhedralConvexShape shape = (PolyhedralConvexShape)body.getCollisionShape();
-		Vector3f v0 = new Vector3f();
-		Vector3f v1 = new Vector3f();
 		g2.setColor(Color.black);
-		for (int i = 0; i < shape.getNumEdges(); i++) {
-			shape.getEdge(i, v0, v1);
-			trans.transform(v0);
-			trans.transform(v1);
-			
-			Vector3d pt1 = viewMatrix.transformPosition(new Vector3d(v0.x, v0.y, -v0.z));
-			Vector3d pt2 = viewMatrix.transformPosition(new Vector3d(v1.x, v1.y, -v1.z));
-			g2.drawLine((int) pt1.x, (int) pt1.y, (int) pt2.x, (int) pt2.y);
-		}
 
+		int n = shape.getNumVertices()/2;
+		Vector3d[] pts = new Vector3d[n];
+		for (int i = 0; i < n; i++) {
+			Vector3f v0 = new Vector3f();
+			shape.getVertex(i, v0);
+			trans.transform(v0);
+			pts[i] = viewMatrix.transformPosition(new Vector3d(v0.x, v0.y, -v0.z));
+		}
+		for (int i = 0; i < n-1; i++) {
+			g2.drawLine((int) pts[i].x, (int) pts[i].y, (int) pts[i+1].x, (int) pts[i+1].y);
+		}
+		g2.drawLine((int) pts[0].x, (int) pts[0].y, (int) pts[n-1].x, (int) pts[n-1].y);
+
+		g2.setColor(Color.red);
+		Vector3f v0 = new Vector3f();
+		trans.transform(v0);
+		Vector3d m = viewMatrix.transformPosition(new Vector3d(v0.x, v0.y, -v0.z));
+		g2.drawLine((int) m.x-2, (int) m.y, (int) m.x+2, (int) m.y);
+		g2.drawLine((int) m.x, (int) m.y-2, (int) m.x, (int) m.y+2);
 	}
 
 	@Override
@@ -390,7 +494,15 @@ public class JBulletTest extends JPanel implements MouseWheelListener, MouseList
 			initScene();
 			break;
 		case KeyEvent.VK_A:
-			addRandomBox();
+			//addRandomBox();
+			addRandomPoly();
+			break;
+		case KeyEvent.VK_Q:
+			for (int i = 0; i < 400; i++) 
+			{
+				//addRandomBox();
+				addRandomPoly();
+			}
 			break;
 		default:
 			break;
