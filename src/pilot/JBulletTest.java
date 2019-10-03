@@ -17,6 +17,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -35,17 +36,23 @@ import com.bulletphysics.collision.broadphase.BroadphaseInterface;
 import com.bulletphysics.collision.broadphase.DbvtBroadphase;
 import com.bulletphysics.collision.dispatch.CollisionDispatcher;
 import com.bulletphysics.collision.dispatch.CollisionObject;
+import com.bulletphysics.collision.dispatch.CollisionWorld;
 import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
 import com.bulletphysics.collision.shapes.CollisionShape;
 import com.bulletphysics.collision.shapes.ConvexHullShape;
 import com.bulletphysics.collision.shapes.PolyhedralConvexShape;
+import com.bulletphysics.dynamics.ActionInterface;
 import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
 import com.bulletphysics.dynamics.DynamicsWorld;
 import com.bulletphysics.dynamics.RigidBody;
 import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
 import com.bulletphysics.dynamics.constraintsolver.Generic6DofConstraint;
+import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
+import com.bulletphysics.dynamics.constraintsolver.RotationalLimitMotor;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
+import com.bulletphysics.dynamics.constraintsolver.TranslationalLimitMotor;
 import com.bulletphysics.linearmath.DefaultMotionState;
+import com.bulletphysics.linearmath.IDebugDraw;
 import com.bulletphysics.linearmath.QuaternionUtil;
 import com.bulletphysics.linearmath.Transform;
 import com.bulletphysics.util.ObjectArrayList;
@@ -68,6 +75,8 @@ public class JBulletTest extends JPanel
 	private static double renderFPS = 30;
 	private static float physicsFPS = 60;
 
+	private static float wy = 5f;
+	
 	private static Object worldLock = new Object();
 	private static DynamicsWorld world = null;
 	private static RigidBody zeroBody = null;
@@ -114,7 +123,98 @@ public class JBulletTest extends JPanel
 	}
 
 	private static void initScene2() {
-		addBox(2, 2, 0, 0, 0, 0, 0, 0, 0);
+		/*float dl = .1f;
+		float l1 = 2;
+		RigidBody box1 = addBox(l1, 1, 0.1, 0, 0, 0, 0, 0, 0);
+		ServoMotorJoint joint1 = new ServoMotorJoint(box1, new Vector3f(-l1/2, 0, 0), new Vector3f(0, 0, 1));
+		joint1.setTargetAngle((float) (joint1.getAngle()+Math.PI/20));
+		world.addConstraint(joint1);
+		
+		float l2 = 1.5f;
+		RigidBody box2 = addBox(l2, 1, 0.1, 0, l1, 0, 0, 0, 0);
+		ServoMotorJoint joint2 = new ServoMotorJoint(box1, box2, new Vector3f(l1/2+dl, 0, 0), new Vector3f(-l2/2-dl, 0, 0), new Vector3f(0, 0, 1), new Vector3f(0, 0, 1));
+		joint2.setTargetAngle((float) (joint2.getAngle()-Math.PI/15));
+		world.addConstraint(joint2);
+		
+		float l3 = 1;
+		RigidBody box3 = addBox(l3, 1, 4, 0, 30, 0, 0, 0, 0);
+		ServoMotorJoint joint3 = new ServoMotorJoint(box2, box3, new Vector3f(l2/2+dl, 0, 0), new Vector3f(-l3/2-dl, 0, 0), new Vector3f(0, 0, 1), new Vector3f(0, 0, 1));
+		joint3.setTargetAngle((float) (joint3.getAngle()-Math.PI/10));
+		world.addConstraint(joint3);*/
+		
+		RigidBody box0 = new RigidBody(0, null, null);
+		world.addRigidBody(box0);
+		
+		float de = .04f;
+		
+		float l1 = 2;
+		RigidBody box1 = addBox(l1, .1, 0.1, l1/2+de, 0, 0, 0, 0, 0);
+		Generic6DofConstraint joint0 = new Generic6DofConstraint(
+				box0, 
+				box1, 
+				new Transform(new Matrix4f(new Quat4f(), new Vector3f(0, 0, 0), 1)), 
+				new Transform(new Matrix4f(new Quat4f(), new Vector3f(-(l1/2+de), 0, 0), 1)), 
+				false);
+		world.addConstraint(joint0);
+		
+		/*float l2 = 1.5f;
+		RigidBody box2 = addBox(l2, .1, 0.1, l1+l2/2+de, 0, 0, 0, 0, 0);
+		Generic6DofConstraint joint1 = new Generic6DofConstraint(
+				box1, 
+				box2, 
+				new Transform(new Matrix4f(new Quat4f(), new Vector3f(l1/2+de, 0, 0), 1)), 
+				new Transform(new Matrix4f(new Quat4f(), new Vector3f(-(l2/2+de), 0, 0), 1)), 
+				false);
+		world.addConstraint(joint1);
+		
+		float l3 = 1f;
+		RigidBody box3 = addBox(l3, .1, 0.1, l1+l2+l3/2+de, 0, 0, 0, 0, 0);
+		Generic6DofConstraint joint2 = new Generic6DofConstraint(
+				box2, 
+				box3, 
+				new Transform(new Matrix4f(new Quat4f(), new Vector3f(l2/2+de, 0, 0), 1)), 
+				new Transform(new Matrix4f(new Quat4f(), new Vector3f(-(l3/2+de), 0, 0), 1)), 
+				false);
+		world.addConstraint(joint2);*/
+		
+		DecimalFormat df = new DecimalFormat("#.####");
+		world.addAction(new ActionInterface() {			
+			@Override
+			public void updateAction(CollisionWorld arg0, float arg1) {
+				//System.out.println(df.format(joint0.getAngle(0))+"\t"+df.format(joint0.getAngle(1))+"\t"+df.format(joint0.getAngle(2)));
+				
+				float maxSpeed = 3f;
+				float targetAngle = (float)0;
+				float angle = joint0.getAngle(2);
+				float diff = (float) Math.atan2(Math.sin(targetAngle-angle), Math.cos(targetAngle-angle));
+				RotationalLimitMotor motor = joint0.getRotationalLimitMotor(2);
+				joint0.getRotationalLimitMotor(2).enableMotor = true;
+				//joint0.getRotationalLimitMotor(2).maxMotorForce = 100;
+				//joint0.getRotationalLimitMotor(2).targetVelocity = 1;
+				//System.out.println(df.format(diff));
+				float v = 0;
+				if (Math.abs(diff) > 0) {
+					v = (float) diff/Math.abs(diff);
+					v *= Math.abs(diff)*maxSpeed;
+					//v = Math.min(v, maxSpeed);
+				}
+				motor.targetVelocity = v;
+				motor.maxMotorForce = 1000;
+				
+				joint0.setLimit(0, 0, 0);
+				joint0.setLimit(1, 0, 0);
+				joint0.setLimit(2, 0, 0);
+				
+				//box1.setAngularVelocity(new Vector3f(0, 0, -v));
+				//box1.applyTorqueImpulse(new Vector3f(0, 0, v));
+				//box1.applyTorque(new Vector3f(0, 0, v));
+			}
+			
+			@Override
+			public void debugDraw(IDebugDraw arg0) {
+			}
+		});
+		
 	}
 	
 	private static void initScene1() {
@@ -127,7 +227,6 @@ public class JBulletTest extends JPanel
 	private static CollisionShape createBoxShape(double w, double h) {
 		float wx = (float) (w / 2d);
 		float wz = (float) (h / 2d);
-		float wy = 1f;
 
 		ObjectArrayList<Vector3f> points = new ObjectArrayList<>();
 
@@ -151,7 +250,6 @@ public class JBulletTest extends JPanel
 	}
 
 	private static CollisionShape createRandomPolyShape(int n, double r) {
-		float wy = 1f;
 
 		ObjectArrayList<Vector3f> points = new ObjectArrayList<>();
 
@@ -444,7 +542,12 @@ public class JBulletTest extends JPanel
 
 	@Override
 	public void mouseClicked(MouseEvent e) {
-		// Not implemented.
+		
+		float m = 10;
+		if (SwingUtilities.isRightMouseButton(e)) {
+			Vector3d p = viewMatrix.invert(new Matrix4d()).transformPosition(new Vector3d(e.getPoint().x, e.getPoint().y, 0));
+			addBox(1, 1, m, p.x, p.y, 0, 0, 0, 0);
+		}
 	}
 
 	@Override

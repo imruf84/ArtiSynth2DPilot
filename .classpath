@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="var" path="ARTISYNTH_HOME"/>
 	<classpathentry kind="lib" path="libs/jbullet-3.0.0.20130526.jar"/>
 	<classpathentry kind="lib" path="libs/joml-1.9.17.jar"/>
 	<classpathentry kind="lib" path="libs/vecmath-1.5.2.jar"/>
