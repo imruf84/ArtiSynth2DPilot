@@ -58,8 +58,10 @@ public class JBulletTest extends JPanel
 	private Point dragFrom = null;
 	private static Vector3d drag = new Vector3d();
 	private static Matrix4d viewMatrix = new Matrix4d();
-	private static double cameraZoom = 1 / 10d;
-	private static Vector2d cameraPosition = new Vector2d(0, -14);
+	//private static double cameraZoom = 1 / 10d;
+	private static double cameraZoom = 1 / 4d;
+	//private static Vector2d cameraPosition = new Vector2d(0, -14);
+	private static Vector2d cameraPosition = new Vector2d(0, 0);
 	private static double viewportWidth = 1200;
 	private static double viewportHeight = 800;
 
@@ -70,7 +72,7 @@ public class JBulletTest extends JPanel
 	private static DynamicsWorld world = null;
 	private static RigidBody zeroBody = null;
 	
-	private static int sceneIndex = 1;
+	private static int sceneIndex = 2;
 
 	public JBulletTest() {
 		addMouseWheelListener(this);
@@ -83,12 +85,16 @@ public class JBulletTest extends JPanel
 		initScene(sceneIndex);
 	}
 	
-	private static void initScene(int sceneIndex) {
+	private static void initScene(int si) {
+		sceneIndex = si;
 		synchronized (worldLock) {
 			clearScene();
 			switch (sceneIndex) {
 			case 1:
 				initScene1();
+				break;
+			case 2:
+				initScene2();
 				break;
 			default:
 				break;
@@ -107,8 +113,11 @@ public class JBulletTest extends JPanel
 		world.addRigidBody(zeroBody);
 	}
 
+	private static void initScene2() {
+		addBox(2, 2, 0, 0, 0, 0, 0, 0, 0);
+	}
+	
 	private static void initScene1() {
-		sceneIndex = 1;
 		addBox(100, 10, 0, 0, -10f / 2f, 0, 0, 0, 0);
 		addBox(100, 10, 0, 0, 100f, 0, 0, 0, 0);
 		addBox(10, 100, 0, -100f / 2f, 100f / 2f, 0, 0, 0, 0);
@@ -501,6 +510,9 @@ public class JBulletTest extends JPanel
 			break;
 		case KeyEvent.VK_1:
 			initScene(1);
+			break;
+		case KeyEvent.VK_2:
+			initScene(2);
 			break;
 		default:
 			break;
