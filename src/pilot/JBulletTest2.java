@@ -17,9 +17,6 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.text.DecimalFormat;
-import java.util.Arrays;
-import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -33,59 +30,45 @@ import org.joml.Vector2d;
 import org.joml.Vector3d;
 
 import com.bulletphysics.collision.broadphase.BroadphaseInterface;
-import com.bulletphysics.collision.broadphase.CollisionFilterGroups;
 import com.bulletphysics.collision.broadphase.DbvtBroadphase;
-import com.bulletphysics.collision.dispatch.CollisionDispatcher;
-import com.bulletphysics.collision.dispatch.CollisionFlags;
 import com.bulletphysics.collision.dispatch.CollisionObject;
-import com.bulletphysics.collision.dispatch.CollisionWorld;
 import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
 import com.bulletphysics.collision.shapes.CollisionShape;
-import com.bulletphysics.collision.shapes.ConvexHullShape;
 import com.bulletphysics.collision.shapes.PolyhedralConvexShape;
-import com.bulletphysics.dynamics.ActionInterface;
 import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
 import com.bulletphysics.dynamics.DynamicsWorld;
 import com.bulletphysics.dynamics.RigidBody;
 import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
 import com.bulletphysics.dynamics.constraintsolver.Generic6DofConstraint;
-import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
-import com.bulletphysics.dynamics.constraintsolver.RotationalLimitMotor;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
-import com.bulletphysics.dynamics.constraintsolver.TranslationalLimitMotor;
 import com.bulletphysics.linearmath.DefaultMotionState;
-import com.bulletphysics.linearmath.IDebugDraw;
+import com.bulletphysics.linearmath.MotionState;
 import com.bulletphysics.linearmath.QuaternionUtil;
 import com.bulletphysics.linearmath.Transform;
-import com.bulletphysics.util.ObjectArrayList;
 
 // https://github.com/normen/jbullet/tree/master/src/com/bulletphysics
-public class JBulletTest extends JPanel
+public class JBulletTest2 extends JPanel
 		implements MouseWheelListener, MouseListener, MouseMotionListener, ComponentListener, KeyListener {
 
 	private static final long serialVersionUID = -730734892177645353L;
 	private Point dragFrom = null;
 	private static Vector3d drag = new Vector3d();
 	private static Matrix4d viewMatrix = new Matrix4d();
-	//private static double cameraZoom = 1 / 10d;
 	private static double cameraZoom = 1 / 4d;
-	//private static Vector2d cameraPosition = new Vector2d(0, -14);
 	private static Vector2d cameraPosition = new Vector2d(0, 0);
 	private static double viewportWidth = 1200;
 	private static double viewportHeight = 800;
 
 	private static double renderFPS = 30;
 	private static float physicsFPS = 100;
-
-	private static float wy = 50f;
 	
 	private static Object worldLock = new Object();
 	private static DynamicsWorld world = null;
 	private static RigidBody zeroBody = null;
 	
-	private static int sceneIndex = 2;
+	private static int sceneIndex = 1;
 
-	public JBulletTest() {
+	public JBulletTest2() {
 		addMouseWheelListener(this);
 		addMouseListener(this);
 		addMouseMotionListener(this);
@@ -104,9 +87,6 @@ public class JBulletTest extends JPanel
 			case 1:
 				initScene1();
 				break;
-			case 2:
-				initScene2();
-				break;
 			default:
 				break;
 			}
@@ -116,174 +96,28 @@ public class JBulletTest extends JPanel
 	private static void clearScene() {
 		BroadphaseInterface broadphase = new DbvtBroadphase();
 		DefaultCollisionConfiguration collisionConfiguration = new DefaultCollisionConfiguration();
-		CollisionDispatcher dispatcher = new CollisionDispatcher(collisionConfiguration);
+		MyCollisionDispatcher dispatcher = new MyCollisionDispatcher(collisionConfiguration);
 		SequentialImpulseConstraintSolver solver = new SequentialImpulseConstraintSolver();
 		world = new DiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
 		world.setGravity(new Vector3f(0, -10, 0));
 		zeroBody = new RigidBody(0, null, null);
 		world.addRigidBody(zeroBody);
 	}
-
-	private static void initScene2() {
-		
-		RigidBody floor = addBox(20, .4, 0, 0, -.5, 0, 0, 0, 0);
-		
-		float dl = .02f;
-		float l1 = 2f;
-		RigidBody box1 = addBox(l1, .02, 0.1, l1/2, 0, 0, 0, 0, 0);
-		//ServoMotorJoint joint1 = new ServoMotorJoint(box1, new Vector3f(-(l1/2+dl), 0, 0), new Vector3f(0, 0, 1));
-		ServoMotorJoint joint1 = new ServoMotorJoint(addBox(.01, .01, 0.1, 0, 0, 0, 0, 0, 0), box1, new Vector3f(0, 0, 0), new Vector3f(-(l1/2+dl), 0, 0), new Vector3f(0, 0, 1), new Vector3f(0, 0, 1));
-		joint1.setTargetAngle((float) (joint1.getAngle()+Math.PI/4));
-		world.addConstraint(joint1);
-		
-		float l2 = 1.5f;
-		RigidBody box2 = addBox(l2, .02, 0.1, l1+dl+l2/2+dl, 0, 0, 0, 0, 0);
-		ServoMotorJoint joint2 = new ServoMotorJoint(box1, box2, new Vector3f(l1/2+dl, 0, 0), new Vector3f(-l2/2-dl, 0, 0), new Vector3f(0, 0, 1), new Vector3f(0, 0, 1));
-		joint2.setTargetAngle((float) (joint2.getAngle()+Math.PI/5));
-		world.addConstraint(joint2);
-		
-		float l3 = 1f;
-		RigidBody box3 = addBox(l3, .02, .1, l1+dl+l2+dl+l3/2+dl, 0, 0, 0, 0, 0);
-		ServoMotorJoint joint3 = new ServoMotorJoint(box2, box3, new Vector3f(l2/2+dl, 0, 0), new Vector3f(-l3/2-dl, 0, 0), new Vector3f(0, 0, 1), new Vector3f(0, 0, 1));
-		joint3.setTargetAngle((float) (joint3.getAngle()+Math.PI/4));
-		world.addConstraint(joint3);
-		
-		world.addCollisionObject(box3, (short)10, (short)CollisionFlags.KINEMATIC_OBJECT);
-		world.addCollisionObject(floor, (short)11, (short)CollisionFlags.STATIC_OBJECT);
-		
-		/*
-		RigidBody box0 = new RigidBody(0, null, null);
-		world.addRigidBody(box0);
-		
-		float de = .04f;
-		
-		float l1 = 2;
-		RigidBody box1 = addBox(l1, .1, 0.1, l1/2+de, 0, 0, 0, 0, 0);
-		ServoMotorJoint2 joint0 = new ServoMotorJoint2(
-				//box0,
-				addBox(.1, .1, 0.1, 0, 0, 0, 0, 0, 0),
-				box1, 
-				new Transform(new Matrix4f(new Quat4f(), new Vector3f(0, 0, 0), 1)), 
-				new Transform(new Matrix4f(new Quat4f(), new Vector3f(-(l1/2+de), 0, 0), 1)), 
-				false);
-		joint0.setTargetAngle(-3.14f/3f);
-		world.addConstraint(joint0);
-		
-		float l2 = 1.5f;
-		RigidBody box2 = addBox(l2, .1, 0.1, l1+l2/2+de, 0, 0, 0, 0, 0);
-		ServoMotorJoint2 joint1 = new ServoMotorJoint2(
-				box1, 
-				box2, 
-				new Transform(new Matrix4f(new Quat4f(), new Vector3f(l1/2+de, 0, 0), 1)), 
-				new Transform(new Matrix4f(new Quat4f(), new Vector3f(-(l2/2+de), 0, 0), 1)), 
-				false);
-		joint1.setTargetAngle(3.14f/3f);
-		world.addConstraint(joint1);
-		
-		float l3 = 1f;
-		RigidBody box3 = addBox(l3, .1, .1, l1+l2+l3/2+de, 0, 0, 0, 0, 0);
-		ServoMotorJoint2 joint2 = new ServoMotorJoint2(
-				box2, 
-				box3, 
-				new Transform(new Matrix4f(new Quat4f(), new Vector3f(l2/2+de, 0, 0), 1)), 
-				new Transform(new Matrix4f(new Quat4f(), new Vector3f(-(l3/2+de), 0, 0), 1)), 
-				false);
-		joint2.setTargetAngle(3.14f/5f);
-		world.addConstraint(joint2);
-		*/
-		
-	}
 	
 	private static void initScene1() {
-		addBox(100, 10, 0, 0, -10f / 2f, 0, 0, 0, 0);
-		addBox(100, 10, 0, 0, 100f, 0, 0, 0, 0);
-		addBox(10, 100, 0, -100f / 2f, 100f / 2f, 0, 0, 0, 0);
-		addBox(10, 100, 0, 100f / 2f, 100f / 2f, 0, 0, 0, 0);
+		addRigidBody(MyRigidBody.createRigidBody(1, 0, 1, 1, CollisionShapesUtil.createBoxShape(1, 1)));
 	}
-
-	private static CollisionShape createBoxShape(double w, double h) {
-		float wx = (float) (w / 2d);
-		float wz = (float) (h / 2d);
-
-		ObjectArrayList<Vector3f> points = new ObjectArrayList<>();
-
-		points.add(new Vector3f(wx, wy, wz));
-		points.add(new Vector3f(-wx, wy, wz));
-		points.add(new Vector3f(-wx, wy, -wz));
-		points.add(new Vector3f(wx, wy, -wz));
-
-		points.add(new Vector3f(wx, -wy, wz));
-		points.add(new Vector3f(-wx, -wy, wz));
-		points.add(new Vector3f(-wx, -wy, -wz));
-		points.add(new Vector3f(wx, -wy, -wz));
-
-		for (Vector3f p : points) {
-			float id = -p.y;
-			p.y = p.z;
-			p.z = id;
+	
+	private static MyRigidBody addRigidBody(MyRigidBody body) {
+		synchronized (worldLock) {
+			world.addRigidBody(body);
+			fixTo2DPlane(body);
 		}
-
-		return new ConvexHullShape(points);
-	}
-
-	private static CollisionShape createRandomPolyShape(int n, double r) {
-
-		ObjectArrayList<Vector3f> points = new ObjectArrayList<>();
-
-		float[] ang = new float[n];
-		for (int i = 0; i < n; i++) {
-			ang[i] = (float) ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-		}
-		Arrays.sort(ang);
-		for (int i = 0; i < n; i++) {
-			points.add(new Vector3f((float) (r * Math.cos(ang[i])), wy, (float) (r * Math.sin(ang[i]))));
-		}
-		for (int i = 0; i < n; i++) {
-			points.add(new Vector3f(points.get(i).x, -wy, points.get(i).z));
-		}
-
-		for (Vector3f p : points) {
-			float id = -p.y;
-			p.y = p.z;
-			p.z = id;
-		}
-
-		return new ConvexHullShape(points);
-	}
-
-	private static RigidBody addPoly(int n, double r, double m, double x, double y, double a, double vx, double vy,
-			double va) {
-		CollisionShape shape = createRandomPolyShape(n, r);
-		return createRigidBody(shape, m, x, y, a, vx, vy, va);
-	}
-
-	private static RigidBody addBox(double w, double h, double m, double x, double y, double a, double vx, double vy,
-			double va) {
-
-		CollisionShape shape = createBoxShape(w, h);
-		return createRigidBody(shape, m, x, y, a, vx, vy, va);
-	}
-
-	private static RigidBody createRigidBody(CollisionShape shape, double m, double x, double y, double a, double vx,
-			double vy, double va) {
-		Quat4f rot = new Quat4f();
-		QuaternionUtil.setRotation(rot, new Vector3f(0, 0, 1), (float) a);
-
-		DefaultMotionState motionState = new DefaultMotionState(
-				new Transform(new Matrix4f(rot, new Vector3f((float) x, (float) y, 0), 1.0f)));
-
-		Vector3f inertia = new Vector3f(0, 0, 0);
-		shape.calculateLocalInertia((float) m, inertia);
-
-		RigidBodyConstructionInfo rigidBodyCI = new RigidBodyConstructionInfo((float) m, motionState, shape, inertia);
-		RigidBody body = new RigidBody(rigidBodyCI);
-		body.setUserPointer(null);
-		body.applyCentralImpulse(new Vector3f((float) vx, (float) vy, 0));
-		body.applyTorqueImpulse(new Vector3f(0, 0, (float) va));
-
-		body.setRestitution(.1f);
-		body.setSleepingThresholds(.1f, .1f);
 		
+		return body;
+	}
+	
+	private static Generic6DofConstraint fixTo2DPlane(MyRigidBody body) {
 		Transform tr1 = new Transform();
 		tr1.setIdentity();
 		Transform tr2 = new Transform();
@@ -298,38 +132,9 @@ public class JBulletTest extends JPanel
 
 		synchronized (worldLock) {
 			world.addConstraint(contr2D);
-			world.addRigidBody(body);
 		}
-
-		return body;
-	}
-
-	private static RigidBody addRandomPoly() {
-		int n = ThreadLocalRandom.current().nextInt(3, 8);
-		double r = ThreadLocalRandom.current().nextDouble(.1, 4);
-		double m = ThreadLocalRandom.current().nextDouble(.01, 10);
-		double x = ThreadLocalRandom.current().nextDouble(-10, 10);
-		double y = ThreadLocalRandom.current().nextDouble(10, 40);
-		double a = ThreadLocalRandom.current().nextDouble(-Math.PI, Math.PI);
-		double vx = ThreadLocalRandom.current().nextDouble(-50, 50);
-		double vy = ThreadLocalRandom.current().nextDouble(-100, 100);
-		double va = ThreadLocalRandom.current().nextDouble(-40, 40);
-
-		return addPoly(n, r, m, x, y, a, vx, vy, va);
-	}
-
-	private static RigidBody addRandomBox() {
-		double w = ThreadLocalRandom.current().nextDouble(.1, 4);
-		double h = ThreadLocalRandom.current().nextDouble(.1, 4);
-		double m = ThreadLocalRandom.current().nextDouble(.01, 10);
-		double x = ThreadLocalRandom.current().nextDouble(-10, 10);
-		double y = ThreadLocalRandom.current().nextDouble(10, 40);
-		double a = ThreadLocalRandom.current().nextDouble(-Math.PI, Math.PI);
-		double vx = ThreadLocalRandom.current().nextDouble(-50, 50);
-		double vy = ThreadLocalRandom.current().nextDouble(-100, 100);
-		double va = ThreadLocalRandom.current().nextDouble(-40, 40);
-
-		return addBox(w, h, m, x, y, a, vx, vy, va);
+		
+		return contr2D;
 	}
 
 	public static void main(String[] args) {
@@ -338,7 +143,7 @@ public class JBulletTest extends JPanel
 		frame.setSize((int) viewportWidth, (int) viewportHeight);
 		frame.setLocationRelativeTo(null);
 		frame.setLayout(new BorderLayout());
-		JBulletTest main = new JBulletTest();
+		JBulletTest2 main = new JBulletTest2();
 		frame.add(main, BorderLayout.CENTER);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.addWindowListener(new WindowAdapter() {
@@ -349,6 +154,7 @@ public class JBulletTest extends JPanel
 		});
 		frame.addKeyListener(main);
 		frame.setVisible(true);
+		frame.setExtendedState(frame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
 
 		initScene();
 
@@ -371,7 +177,7 @@ public class JBulletTest extends JPanel
 					if (updateAcc >= 1d / physicsFPS) {
 						updateAcc = 0;
 						synchronized (worldLock) {
-							world.stepSimulation(1 / physicsFPS, 2);
+							world.stepSimulation(1 / physicsFPS, 10);
 						}
 					}
 
@@ -526,7 +332,6 @@ public class JBulletTest extends JPanel
 		float m = 1;
 		if (SwingUtilities.isRightMouseButton(e)) {
 			Vector3d p = viewMatrix.invert(new Matrix4d()).transformPosition(new Vector3d(e.getPoint().x, e.getPoint().y, 0));
-			addBox(.10, .10, m, p.x, p.y, 0, 0, 0, 0);
 		}
 	}
 
@@ -577,25 +382,18 @@ public class JBulletTest extends JPanel
 			break;
 		case KeyEvent.VK_A:
 			if (e.isShiftDown()) {
-				addRandomBox();
 			} else {
-				addRandomPoly();
 			}
 			break;
 		case KeyEvent.VK_Q:
 			for (int i = 0; i < 400; i++) {
 				if (e.isShiftDown()) {
-					addRandomBox();
 				} else {
-					addRandomPoly();
 				}
 			}
 			break;
 		case KeyEvent.VK_1:
 			initScene(1);
-			break;
-		case KeyEvent.VK_2:
-			initScene(2);
 			break;
 		default:
 			break;

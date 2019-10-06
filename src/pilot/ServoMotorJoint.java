@@ -23,12 +23,12 @@ public class ServoMotorJoint extends HingeConstraint {
 	public void solveConstraint(float timeStep) {
 		super.solveConstraint(timeStep);
 		
-		float maxSpeed = 40;
+		float maxSpeed = 10;
 		float maxImpulse = 40;
 		float angle = getHingeAngle();
 		float diff = (float) Math.atan2(Math.sin(getTargetAngle()-angle), Math.cos(getTargetAngle()-angle));
 		//float softness = .9f;
-		float softness = 0f;
+		float softness = 1f;
 		//float bias = .3f;
 		float bias = .0f;
 		float relax = 1f;
@@ -40,6 +40,11 @@ public class ServoMotorJoint extends HingeConstraint {
 			v = (float) diff/Math.abs(diff);
 			v *= Math.abs(diff)*maxSpeed;
 		}
+
+		//getRigidBodyB().applyTorqueImpulse(new Vector3f(0, 0, v));
+		//getRigidBodyB().applyTorque(new Vector3f(0, 0, v));
+		//getRigidBodyB().setAngularVelocity(new Vector3f(0, 0, v));
+		
 		enableAngularMotor(true, v, maxImpulse);
 	}
 
