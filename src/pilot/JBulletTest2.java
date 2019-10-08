@@ -17,12 +17,11 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.vecmath.Matrix4f;
-import javax.vecmath.Quat4f;
 import javax.vecmath.Vector3f;
 
 import org.joml.Matrix4d;
@@ -31,19 +30,19 @@ import org.joml.Vector3d;
 
 import com.bulletphysics.collision.broadphase.BroadphaseInterface;
 import com.bulletphysics.collision.broadphase.DbvtBroadphase;
+import com.bulletphysics.collision.broadphase.Dispatcher;
 import com.bulletphysics.collision.dispatch.CollisionObject;
+import com.bulletphysics.collision.dispatch.CollisionWorld;
 import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
-import com.bulletphysics.collision.shapes.CollisionShape;
 import com.bulletphysics.collision.shapes.PolyhedralConvexShape;
+import com.bulletphysics.dynamics.ActionInterface;
 import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
 import com.bulletphysics.dynamics.DynamicsWorld;
 import com.bulletphysics.dynamics.RigidBody;
-import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
 import com.bulletphysics.dynamics.constraintsolver.Generic6DofConstraint;
+import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
-import com.bulletphysics.linearmath.DefaultMotionState;
-import com.bulletphysics.linearmath.MotionState;
-import com.bulletphysics.linearmath.QuaternionUtil;
+import com.bulletphysics.linearmath.IDebugDraw;
 import com.bulletphysics.linearmath.Transform;
 
 // https://github.com/normen/jbullet/tree/master/src/com/bulletphysics
@@ -54,19 +53,19 @@ public class JBulletTest2 extends JPanel
 	private Point dragFrom = null;
 	private static Vector3d drag = new Vector3d();
 	private static Matrix4d viewMatrix = new Matrix4d();
-	private static double cameraZoom = 1 / 4d;
-	private static Vector2d cameraPosition = new Vector2d(0, 0);
+	private static double cameraZoom = 1 / 6d;
+	private static Vector2d cameraPosition = new Vector2d(0, -5);
 	private static double viewportWidth = 1200;
 	private static double viewportHeight = 800;
 
 	private static double renderFPS = 30;
-	private static float physicsFPS = 100;
+	private static float physicsFPS = 60;
 	
 	private static Object worldLock = new Object();
 	private static DynamicsWorld world = null;
 	private static RigidBody zeroBody = null;
 	
-	private static int sceneIndex = 1;
+	private static int sceneIndex = 2;
 
 	public JBulletTest2() {
 		addMouseWheelListener(this);
@@ -87,6 +86,9 @@ public class JBulletTest2 extends JPanel
 			case 1:
 				initScene1();
 				break;
+			case 2:
+				initScene2();
+				break;
 			default:
 				break;
 			}
@@ -105,7 +107,57 @@ public class JBulletTest2 extends JPanel
 	}
 	
 	private static void initScene1() {
-		addRigidBody(MyRigidBody.createRigidBody(1, 0, 1, 1, CollisionShapesUtil.createBoxShape(1, 1)));
+		MyRigidBody floor = addRigidBody(MyRigidBody.createRigidBody(0, 0, 0, 0, CollisionShapesUtil.createBoxShape(100, 1)));
+		floor.setRestitution(.1f);
+		floor.setFriction(.9f);
+		
+		MyRigidBody leftWall = addRigidBody(MyRigidBody.createRigidBody(-50, 50, 0, 0, CollisionShapesUtil.createBoxShape(1, 100)));
+		leftWall.setRestitution(.1f);
+		leftWall.setFriction(.9f);
+		
+		MyRigidBody rightWall = addRigidBody(MyRigidBody.createRigidBody(50, 50, 0, 0, CollisionShapesUtil.createBoxShape(1, 100)));
+		rightWall.setRestitution(.1f);
+		rightWall.setFriction(.9f);
+		
+		MyRigidBody body1 = addRigidBody(MyRigidBody.createRigidBody(1, 10, 1, .2f, CollisionShapesUtil.createBoxShape(1.4, 1.4)));
+		body1.setRestitution(.1f);
+		body1.setFriction(.9f);
+		
+		MyRigidBody body2 = addRigidBody(MyRigidBody.createRigidBody(1, 14, 4, .2f, CollisionShapesUtil.createBoxShape(1.4, 1.4)));
+		body2.setRestitution(.1f);
+		body2.setFriction(.9f);
+		
+		MyCollisionDispatcher dispatcher = (MyCollisionDispatcher) world.getDispatcher();
+		dispatcher.addCollisionPair(new CollisionPair(body1, body2));
+		
+		MyRigidBody body3 = addRigidBody(MyRigidBody.createRigidBody(1, 20, -2, .2f, CollisionShapesUtil.createBoxShape(1.4, 1.4)));
+		body3.setRestitution(.1f);
+		body3.setFriction(.9f);
+	}
+	
+	private static void initScene2() {
+		
+		MyCollisionDispatcher dispatcher = (MyCollisionDispatcher) world.getDispatcher();
+		
+		MyRigidBody floor = addRigidBody(MyRigidBody.createRigidBody(0, -1.5f, 0, 0, CollisionShapesUtil.createBoxShape(100, 1)));
+		MyRigidBody leftWall = addRigidBody(MyRigidBody.createRigidBody(-50, 50, 0, 0, CollisionShapesUtil.createBoxShape(1, 100)));
+		MyRigidBody rightWall = addRigidBody(MyRigidBody.createRigidBody(50, 50, 0, 0, CollisionShapesUtil.createBoxShape(1, 100)));
+		
+		float l0 = 10;
+		MyRigidBody box0 = addRigidBody(MyRigidBody.createRigidBody(0, 5, 0, 1, CollisionShapesUtil.createBoxShape(l0, 1)));
+		MyRigidBody box1 = addRigidBody(MyRigidBody.createRigidBody(0, 5, 0, 1, CollisionShapesUtil.createBoxShape(l0, 1)));
+		MyRigidBody box2 = addRigidBody(MyRigidBody.createRigidBody(0, 5, 0, 1, CollisionShapesUtil.createBoxShape(l0, 1)));
+		ServoMotorJoint joint0 = new ServoMotorJoint(box0, box1, new Vector3f(l0/2, 0, 0), new Vector3f(-l0/2, 0, 0), new Vector3f(0, 0, 1), new Vector3f(0, 0, 1));
+		joint0.setTargetAngle(joint0.getAngle()+(float)Math.PI/3f);
+		ServoMotorJoint joint1 = new ServoMotorJoint(box1, box2, new Vector3f(l0/2, 0, 0), new Vector3f(-l0/2, 0, 0), new Vector3f(0, 0, 1), new Vector3f(0, 0, 1));
+		joint1.setTargetAngle(joint1.getAngle()+(float)Math.PI/3f);
+		dispatcher.addCollisionPair(new CollisionPair(box0, box1));
+		dispatcher.addCollisionPair(new CollisionPair(box1, box2));
+		dispatcher.addCollisionPair(new CollisionPair(box0, box2));
+		world.addConstraint(joint0);
+		world.addConstraint(joint1);
+		
+		
 	}
 	
 	private static MyRigidBody addRigidBody(MyRigidBody body) {
@@ -329,9 +381,12 @@ public class JBulletTest2 extends JPanel
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		
-		float m = 1;
+		float m = 10;
 		if (SwingUtilities.isRightMouseButton(e)) {
 			Vector3d p = viewMatrix.invert(new Matrix4d()).transformPosition(new Vector3d(e.getPoint().x, e.getPoint().y, 0));
+			MyRigidBody body = addRigidBody(MyRigidBody.createRigidBody((float)p.x, (float)p.y, (float) ThreadLocalRandom.current().nextDouble(0, Math.PI * 2), m, CollisionShapesUtil.createBoxShape(1.4, 1.4)));
+			body.setRestitution(.1f);
+			body.setFriction(.9f);
 		}
 	}
 
