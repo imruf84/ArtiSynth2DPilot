@@ -65,13 +65,18 @@ public class MyRigidBody extends RigidBody {
 	}
 		
 	public static MyRigidBody createRigidBody(float x, float y, float a, float m, CollisionShape shape) {
-		MotionState motionState = MotionStateUtil.createDefaultMotionState(x, y, a);
-		Vector3f inertia = CollisionShapesUtil.createIntertia(shape, m);
-		RigidBodyConstructionInfo rigidBodyCI = new RigidBodyConstructionInfo((float) m, motionState, shape , inertia);
-		MyRigidBody body = new MyRigidBody(rigidBodyCI);
-		body.setUserPointer(null);
-		
-		return body;
+
+		if (shape != null) {
+			MotionState motionState = MotionStateUtil.createDefaultMotionState(x, y, a);
+			Vector3f inertia = CollisionShapesUtil.createIntertia(shape, m);
+			RigidBodyConstructionInfo rigidBodyCI = new RigidBodyConstructionInfo((float) m, motionState, shape, inertia);
+			MyRigidBody body = new MyRigidBody(rigidBodyCI);
+			body.setUserPointer(null);
+
+			return body;
+		}
+
+		return new MyRigidBody(0, null, null);
 	}
 	
 }

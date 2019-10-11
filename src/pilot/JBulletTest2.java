@@ -33,6 +33,9 @@ import com.bulletphysics.collision.broadphase.DbvtBroadphase;
 import com.bulletphysics.collision.broadphase.Dispatcher;
 import com.bulletphysics.collision.dispatch.CollisionObject;
 import com.bulletphysics.collision.dispatch.CollisionWorld;
+import com.bulletphysics.collision.dispatch.CollisionWorld.ClosestRayResultCallback;
+import com.bulletphysics.collision.dispatch.CollisionWorld.LocalRayResult;
+import com.bulletphysics.collision.dispatch.CollisionWorld.RayResultCallback;
 import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
 import com.bulletphysics.collision.shapes.PolyhedralConvexShape;
 import com.bulletphysics.dynamics.ActionInterface;
@@ -43,6 +46,7 @@ import com.bulletphysics.dynamics.constraintsolver.Generic6DofConstraint;
 import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
 import com.bulletphysics.linearmath.IDebugDraw;
+import com.bulletphysics.linearmath.MotionState;
 import com.bulletphysics.linearmath.Transform;
 
 // https://github.com/normen/jbullet/tree/master/src/com/bulletphysics
@@ -66,6 +70,8 @@ public class JBulletTest2 extends JPanel
 	private static RigidBody zeroBody = null;
 	
 	private static int sceneIndex = 2;
+	private static Generic6DofConstraint grabConstraint = null;
+	private static MyRigidBody grabBody;
 
 	public JBulletTest2() {
 		addMouseWheelListener(this);
@@ -156,8 +162,6 @@ public class JBulletTest2 extends JPanel
 		dispatcher.addCollisionPair(new CollisionPair(box0, box2));
 		world.addConstraint(joint0);
 		world.addConstraint(joint1);
-		
-		
 	}
 	
 	private static MyRigidBody addRigidBody(MyRigidBody body) {
@@ -347,16 +351,77 @@ public class JBulletTest2 extends JPanel
 		if (SwingUtilities.isMiddleMouseButton(e)) {
 			dragFrom = e.getPoint();
 		}
+		
+		if (SwingUtilities.isLeftMouseButton(e)) {
+			//System.out.println("left press");
+			Vector3d p = viewMatrix.invert(new Matrix4d()).transformPosition(new Vector3d(e.getPoint().x, e.getPoint().y, 0));
+
+			RayResultCallback result = new RayResultCallback() {
+				@Override
+				public float addSingleResult(LocalRayResult rayResult, boolean normalInWorldSpace) {
+					MyRigidBody body = (MyRigidBody) rayResult.collisionObject;
+					Transform tr = new Transform();
+					body.getCenterOfMassTransform(tr);
+					tr.inverse();
+					Vector3f localPivot = new Vector3f((float)p.x, (float)p.y, 0);
+					tr.transform(localPivot);
+					//System.out.println(localPivot);
+					
+					if (grabConstraint == null) {
+						
+						body.setActivationState(RigidBody.DISABLE_DEACTIVATION);
+						
+						grabBody = addRigidBody(MyRigidBody.createRigidBody(0, 0, 0, 0, null));
+						fixTo2DPlane(grabBody);
+						world.addRigidBody(grabBody);
+						MotionState motionState = MotionStateUtil.createDefaultMotionState((float)p.x, (float)p.y, 0);
+						grabBody.setMotionState(motionState);
+						
+						Transform grabBodyTr = new Transform();
+						grabBodyTr.setIdentity();
+						Transform bodyTr = new Transform();
+						bodyTr.setIdentity();
+						bodyTr.origin.x = localPivot.x;
+						bodyTr.origin.y = localPivot.y;
+						grabConstraint = new Generic6DofConstraint(grabBody, body, grabBodyTr, bodyTr, false);
+						world.addConstraint(grabConstraint);
+					}
+
+					return 0f;
+				}
+			};
+			
+			world.rayTest(new Vector3f((float)p.x, (float)p.y, -1000), new Vector3f((float)p.x, (float)p.y, 1000), result);
+		}
 	}
 
 	@Override
 	public void mouseReleased(MouseEvent e) {
+		
+		if (SwingUtilities.isRightMouseButton(e)) {
+			float m = 10;
+			Vector3d p = viewMatrix.invert(new Matrix4d()).transformPosition(new Vector3d(e.getPoint().x, e.getPoint().y, 0));
+			MyRigidBody body = addRigidBody(MyRigidBody.createRigidBody((float)p.x, (float)p.y, (float) ThreadLocalRandom.current().nextDouble(0, Math.PI * 2), m, CollisionShapesUtil.createBoxShape(1.4, 1.4)));
+			body.setRestitution(.1f);
+			body.setFriction(.9f);
+		}
+		
 		if (SwingUtilities.isMiddleMouseButton(e)) {
 			dragFrom = null;
 			cameraPosition.x += drag.x;
 			cameraPosition.y += drag.y;
 			drag.set(0, 0, 0);
 		}
+		
+		if (SwingUtilities.isLeftMouseButton(e)) {
+			if (grabConstraint != null) {
+				world.removeConstraint(grabConstraint);
+				grabConstraint = null;
+				world.removeRigidBody(grabBody);
+				grabBody = null;
+			}
+		}
+		
 	}
 
 	@Override
@@ -369,6 +434,14 @@ public class JBulletTest2 extends JPanel
 
 			updateViewMatrix();
 		}
+		
+		if (SwingUtilities.isLeftMouseButton(e)) {
+			if (grabBody != null) {
+				Vector3d p = viewMatrix.invert(new Matrix4d()).transformPosition(new Vector3d(e.getPoint().x, e.getPoint().y, 0));
+				MotionState motionState = MotionStateUtil.createDefaultMotionState((float)p.x, (float)p.y, 0);
+				grabBody.setMotionState(motionState);
+			}
+		}
 	}
 
 	@Override
@@ -380,14 +453,6 @@ public class JBulletTest2 extends JPanel
 
 	@Override
 	public void mouseClicked(MouseEvent e) {
-		
-		float m = 10;
-		if (SwingUtilities.isRightMouseButton(e)) {
-			Vector3d p = viewMatrix.invert(new Matrix4d()).transformPosition(new Vector3d(e.getPoint().x, e.getPoint().y, 0));
-			MyRigidBody body = addRigidBody(MyRigidBody.createRigidBody((float)p.x, (float)p.y, (float) ThreadLocalRandom.current().nextDouble(0, Math.PI * 2), m, CollisionShapesUtil.createBoxShape(1.4, 1.4)));
-			body.setRestitution(.1f);
-			body.setFriction(.9f);
-		}
 	}
 
 	@Override
